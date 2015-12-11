@@ -779,7 +779,7 @@ cdef class Reader(object):
     cdef char _prepend_chr
     cdef public object reader
     cdef bint compressed, prepend_chr
-    cdef public dict metadata, infos, filters, formats,
+    cdef public object metadata, infos, filters, formats,
     cdef readonly dict _sample_indexes
     cdef list _header_lines, samp_data
     cdef public list samples
@@ -816,13 +816,13 @@ cdef class Reader(object):
             self.reader = gzip.GzipFile(fileobj=self.reader)
 
         #: metadata fields from header
-        self.metadata = {}
+        self.metadata = collections.OrderedDict()
         #: INFO fields from header
-        self.infos = {}
+        self.infos = collections.OrderedDict()
         #: FILTER fields from header
-        self.filters = {}
+        self.filters = collections.OrderedDict()
         #: FORMAT fields from header
-        self.formats = {}
+        self.formats = collections.OrderedDict()
         self.samples = []
         self._sample_indexes = {}
         self._header_lines = []
