@@ -1139,7 +1139,7 @@ class Writer(object):
 
     def __init__(self, stream, template):
         self.stream = stream
-        self.writer = csv.writer(stream, delimiter="\t")
+        self.writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
         self.template = template
 
         for line in template.metadata.items():
