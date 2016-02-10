@@ -22,7 +22,8 @@ class TestVcfSpecs(unittest.TestCase):
 
         # test we can walk the file at least
         for r in reader:
-
+            #make sure __repr__ works
+            assert str(r)
             if r.POS == 1230237:
                 assert r.is_monomorphic
             else:

@@ -514,6 +514,16 @@ cdef class Record(object):
     def _format_qual(self):
         return str(self.QUAL) if self.QUAL is not None else None
 
+    def _format_filter(self):
+        if self.FILTER is None:
+            return None
+
+        if isinstance(self.FILTER, basestring):
+            return self.FILTER
+
+        #filter is not empty or a string so we assume it's a list
+        return ';'.join(self.FILTER)
+
     def _format_info(self):
         if not self.INFO:
             return '.'
@@ -537,12 +547,12 @@ cdef class Record(object):
     def __repr__(self):
         if self.has_genotypes == True:
             core = "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
-                          self._format_qual() or '.', self.FILTER or '.', self._format_info(), self.FORMAT])
+                          self._format_qual() or '.', self._format_filter() or '.', self._format_info(), self.FORMAT])
             samples = "\t".join([self._format_sample(sample) for sample in self.samples])
             return core + "\t" + samples
         else:
             return "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
-                          self._format_qual() or '.', self.FILTER or '.', self._format_info()])
+                          self._format_qual() or '.', self._format_filter() or '.', self._format_info()])
 
 
     def __cmp__(self, other):
