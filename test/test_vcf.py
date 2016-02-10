@@ -619,6 +619,11 @@ class TestOpenMethods(unittest.TestCase):
         r = cyvcf.Reader(filename='test/tb.vcf.gz')
         self.assertEqual(self.samples, r.samples)
 
+    #spaces in a sample name is valid because they are separated by tabs
+    def testSpaceInFilename(self):
+        r = cyvcf.Reader(filename='test/sample_with_space.vcf')
+        self.assertEqual(r.samples, ['Name With Spaces', 'Second Sample'])
+
 
 class TestFilter(unittest.TestCase):
 

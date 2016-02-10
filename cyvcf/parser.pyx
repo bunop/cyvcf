@@ -904,7 +904,7 @@ cdef class Reader(object):
         if line.startswith('#'):  # the column def'n line - REQ'D
             self._col_defn_line = line
             self._header_lines.append(line)
-            fields = line.split()
+            fields = line.rstrip().split("\t")
             self.samples = fields[9:]
             self.num_samples = len(self.samples)
             self._sample_indexes = dict([(x,i) for (i,x) in enumerate(self.samples)])
