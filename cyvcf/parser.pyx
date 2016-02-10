@@ -653,7 +653,7 @@ cdef class Record(object):
 
         if len(self.REF) > 1 and not is_sv: return True
         for alt in self.ALT:
-            if alt is None:
+            if alt is None or alt == '-':
                 return True
             elif len(alt) != len(self.REF):
                 # the diff. b/w INDELs and SVs can be murky.

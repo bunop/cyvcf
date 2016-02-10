@@ -268,7 +268,9 @@ class TestRecord(unittest.TestCase):
                 self.assertEqual(False, is_indel)
             if var.POS == 1230237:
                 self.assertEqual(True, is_indel)
-            elif var.POS == 1234567:
+            if var.POS == 1234567:
+                self.assertEqual(True, is_indel)
+            if var.POS == 1234569:
                 self.assertEqual(True, is_indel)
 
     def test_is_transition(self):
