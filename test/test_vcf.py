@@ -22,7 +22,8 @@ class TestVcfSpecs(unittest.TestCase):
 
         # test we can walk the file at least
         for r in reader:
-
+            #make sure __repr__ works
+            assert str(r)
             if r.POS == 1230237:
                 assert r.is_monomorphic
             else:
@@ -186,6 +187,62 @@ class TestWriter(unittest.TestCase):
         for l, r in zip(records, reader2):
             self.assertEquals(l.samples, r.samples)
 
+    def testHeader(self):
+        """Make sure that the header written out matches the header we got"""
+        filename = 'test/example-4.0.vcf'
+        reader = cyvcf.Reader(open(filename))
+        out = StringIO()
+        writer = cyvcf.Writer(out, reader) #this will immediately call _write_header
+
+        header_lines = []
+        with open(filename) as f:
+            for line in f:
+                if line.startswith('#'):
+                    header_lines.append(line)
+                else:
+                    #no header lines left
+                    break
+
+        out.seek(0)
+        
+        #check each header line matches
+        for i, line in enumerate(out):
+            if line.startswith('#'):
+                try:
+                    self.assertEquals(line, header_lines[i])
+                except IndexError as e:
+                    print "line {} with line number {} was not found in the original file??".format(line, i)
+                    raise
+            else:
+                break
+
+        out.close()
+
+#we can't directly compare lines because the INFO is stored in an unordered dict
+#the order doesn't _really_ matter so for now I won't test this explictly, but we will
+#write out all the lines to make sure it doesn't die
+    def testRows(self):
+        """Make sure the rows are written out the same way they came in"""
+        filename = 'test/example-4.0.vcf'
+        reader = cyvcf.Reader(open(filename))
+        out = StringIO()
+        writer = cyvcf.Writer(out, reader)
+
+        for record in reader:
+            writer.write_record(record)
+
+        #get all the lines that aren't header lines
+        original_lines = []
+        with open(filename) as f:
+            original_lines = [x for x in f if not x.startswith('#')]
+
+        out.seek(0)
+        new_lines = [x for x in out if not x.startswith('#')]
+
+#        self.assertEquals(len(original_lines), len(new_lines))
+#        for i in range(len(new_lines)):
+#            self.assertEquals(original_lines[0], new_lines[0])
+
 class TestRecord(unittest.TestCase):
 
     def test_num_calls(self):
@@ -267,7 +324,9 @@ class TestRecord(unittest.TestCase):
                 self.assertEqual(False, is_indel)
             if var.POS == 1230237:
                 self.assertEqual(True, is_indel)
-            elif var.POS == 1234567:
+            if var.POS == 1234567:
+                self.assertEqual(True, is_indel)
+            if var.POS == 1234569:
                 self.assertEqual(True, is_indel)
 
     def test_is_transition(self):
@@ -617,6 +676,11 @@ class TestOpenMethods(unittest.TestCase):
     def testOpenFilenameGzipped(self):
         r = cyvcf.Reader(filename='test/tb.vcf.gz')
         self.assertEqual(self.samples, r.samples)
+
+    #spaces in a sample name is valid because they are separated by tabs
+    def testSpaceInFilename(self):
+        r = cyvcf.Reader(filename='test/sample_with_space.vcf')
+        self.assertEqual(r.samples, ['Name With Spaces', 'Second Sample'])
 
 
 class TestFilter(unittest.TestCase):

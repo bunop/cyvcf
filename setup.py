@@ -57,6 +57,7 @@ setup(
         url="none",
         package_dir = {"cyvcf": "cyvcf"},
         author_email="arq5x@virginia.edu",
+        install_requires = ["cython"],
         classifiers=[
             'Development Status :: 4 - Beta',
             'Intended Audience :: Science/Research',

@@ -101,22 +101,33 @@ class _vcf_metadata_parser(object):
     def __init__(self):
         super(_vcf_metadata_parser, self).__init__()
         self.info_pattern = re.compile(r'''\#\#INFO=<
-            ID=(?P<id>[^,]+),
-            Number=(?P<number>-?\d+|\.|[ARG]),
-            Type=(?P<type>Integer|Float|Flag|Character|String),
+            ID=(?P<id>[^,]+),\s*
+            Number=(?P<number>-?\d+|\.|[AGR]),\s*
+            Type=(?P<type>Integer|Float|Flag|Character|String),\s*
             Description="(?P<desc>[^"]*)"
+            (?:,\s*Source="(?P<source>[^"]*)")?
+            (?:,\s*Version="?(?P<version>[^"]*)"?)?
             >''', re.VERBOSE)
         self.filter_pattern = re.compile(r'''\#\#FILTER=<
-            ID=(?P<id>[^,]+),
+            ID=(?P<id>[^,]+),\s*
+            Description="(?P<desc>[^"]*)"
+            >''', re.VERBOSE)
+        self.alt_pattern = re.compile(r'''\#\#ALT=<
+            ID=(?P<id>[^,]+),\s*
             Description="(?P<desc>[^"]*)"
             >''', re.VERBOSE)
         self.format_pattern = re.compile(r'''\#\#FORMAT=<
-            ID=(?P<id>.+),
-            Number=(?P<number>-?\d+|\.|[ARG]),
-            Type=(?P<type>.+),
+            ID=(?P<id>.+),\s*
+            Number=(?P<number>-?\d+|\.|[AGR]),\s*
+            Type=(?P<type>.+),\s*
             Description="(?P<desc>.*)"
             >''', re.VERBOSE)
-        self.meta_pattern = re.compile(r'''##(?P<key>.+)=(?P<val>.+)''')
+        self.contig_pattern = re.compile(r'''\#\#contig=<
+            ID=(?P<id>[^>,]+)
+            (,.*length=(?P<length>-?\d+))?
+            .*
+            >''', re.VERBOSE)
+        self.meta_pattern = re.compile(r'''##(?P<key>.+?)=(?P<val>.+)''')
 
     def read_info(self, info_string):
         '''Read a meta-information INFO line.'''
@@ -503,6 +514,16 @@ cdef class Record(object):
     def _format_qual(self):
         return str(self.QUAL) if self.QUAL is not None else None
 
+    def _format_filter(self):
+        if self.FILTER is None:
+            return None
+
+        if isinstance(self.FILTER, basestring):
+            return self.FILTER
+
+        #filter is not empty or a string so we assume it's a list
+        return ';'.join(self.FILTER)
+
     def _format_info(self):
         if not self.INFO:
             return '.'
@@ -526,12 +547,12 @@ cdef class Record(object):
     def __repr__(self):
         if self.has_genotypes == True:
             core = "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
-                          self._format_qual() or '.', self.FILTER or '.', self._format_info(), self.FORMAT])
+                          self._format_qual() or '.', self._format_filter() or 'PASS', self._format_info(), self.FORMAT])
             samples = "\t".join([self._format_sample(sample) for sample in self.samples])
             return core + "\t" + samples
         else:
             return "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
-                          self._format_qual() or '.', self.FILTER or '.', self._format_info()])
+                          self._format_qual() or '.', self._format_filter() or '.', self._format_info()])
 
 
     def __cmp__(self, other):
@@ -632,7 +653,7 @@ cdef class Record(object):
 
         if len(self.REF) > 1 and not is_sv: return True
         for alt in self.ALT:
-            if alt is None:
+            if alt is None or alt == '-':
                 return True
             elif len(alt) != len(self.REF):
                 # the diff. b/w INDELs and SVs can be murky.
@@ -779,7 +800,7 @@ cdef class Reader(object):
     cdef char _prepend_chr
     cdef public object reader
     cdef bint compressed, prepend_chr
-    cdef public dict metadata, infos, filters, formats,
+    cdef public object metadata, infos, filters, formats,
     cdef readonly dict _sample_indexes
     cdef list _header_lines, samp_data
     cdef public list samples
@@ -816,13 +837,13 @@ cdef class Reader(object):
             self.reader = gzip.GzipFile(fileobj=self.reader)
 
         #: metadata fields from header
-        self.metadata = {}
+        self.metadata = collections.OrderedDict()
         #: INFO fields from header
-        self.infos = {}
+        self.infos = collections.OrderedDict()
         #: FILTER fields from header
-        self.filters = {}
+        self.filters = collections.OrderedDict()
         #: FORMAT fields from header
-        self.formats = {}
+        self.formats = collections.OrderedDict()
         self.samples = []
         self._sample_indexes = {}
         self._header_lines = []
@@ -883,7 +904,7 @@ cdef class Reader(object):
         if line.startswith('#'):  # the column def'n line - REQ'D
             self._col_defn_line = line
             self._header_lines.append(line)
-            fields = line.split()
+            fields = line.rstrip().split("\t")
             self.samples = fields[9:]
             self.num_samples = len(self.samples)
             self._sample_indexes = dict([(x,i) for (i,x) in enumerate(self.samples)])
@@ -1128,7 +1149,7 @@ class Writer(object):
 
     def __init__(self, stream, template):
         self.stream = stream
-        self.writer = csv.writer(stream, delimiter="\t")
+        self.writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
         self.template = template
 
         for line in template.metadata.items():
@@ -1150,7 +1171,7 @@ class Writer(object):
     def write_record(self, record):
         """ write a record to the file """
         ffs = self._map(str, [record.CHROM, record.POS, record.ID, record.REF]) \
-              + [self._format_alt(record.ALT), record.QUAL or '.', record.FILTER or '.',
+              + [self._format_alt(record.ALT), self._format_qual(record.QUAL), self._format_filter(record.FILTER) or 'PASS',
                  self._format_info(record.INFO), record.FORMAT]
 
         samples = [self._format_sample(record.FORMAT, sample)
@@ -1160,10 +1181,37 @@ class Writer(object):
     def _format_alt(self, alt):
         return ','.join([x or '.' for x in alt])
 
+    def _format_qual(self, qual):
+        #strip off superfluous .0 to match what's in the test vcfs
+        #maybe we should just store the original text on the class?
+        return str(qual).rstrip('0').rstrip('.') if qual else '.'
+
+    #duplicated _format code from above, true for all these methods
+    def _format_filter(self, filt):
+        if filt is None:
+            return None
+
+        if isinstance(filt, basestring):
+            return filt
+
+        #filter is not empty or a string so we assume it's a list
+        return ';'.join(filt)
+
     def _format_info(self, info):
         if not info:
             return '.'
-        return ';'.join("%s=%s" % (x, self._stringify(y)) for x, y in info.items())
+
+        formatted = []
+        for k, v in info.items():
+            #values of type flag do not have a value, their presence implies True.
+            if self.template.infos[k].type == 'Flag':
+                formatted.append(k)
+            else:
+                formatted.append("{}={}".format(k, self._stringify(v)))
+
+        return ';'.join(formatted)
+
+        #return ';'.join("%s=%s" % (x, self._stringify(y)) for x, y in info.items())
 
     def _format_sample(self, fmt, sample):
         if sample.data["GT"] is None:
