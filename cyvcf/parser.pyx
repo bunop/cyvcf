@@ -547,7 +547,7 @@ cdef class Record(object):
     def __repr__(self):
         if self.has_genotypes == True:
             core = "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
-                          self._format_qual() or '.', self._format_filter() or '.', self._format_info(), self.FORMAT])
+                          self._format_qual() or '.', self._format_filter() or 'PASS', self._format_info(), self.FORMAT])
             samples = "\t".join([self._format_sample(sample) for sample in self.samples])
             return core + "\t" + samples
         else:
@@ -1171,7 +1171,7 @@ class Writer(object):
     def write_record(self, record):
         """ write a record to the file """
         ffs = self._map(str, [record.CHROM, record.POS, record.ID, record.REF]) \
-              + [self._format_alt(record.ALT), record.QUAL or '.', record.FILTER or '.',
+              + [self._format_alt(record.ALT), self._format_qual(record.QUAL), self._format_filter(record.FILTER) or 'PASS',
                  self._format_info(record.INFO), record.FORMAT]
 
         samples = [self._format_sample(record.FORMAT, sample)
@@ -1181,10 +1181,37 @@ class Writer(object):
     def _format_alt(self, alt):
         return ','.join([x or '.' for x in alt])
 
+    def _format_qual(self, qual):
+        #strip off superfluous .0 to match what's in the test vcfs
+        #maybe we should just store the original text on the class?
+        return str(qual).rstrip('0').rstrip('.') if qual else '.'
+
+    #duplicated _format code from above, true for all these methods
+    def _format_filter(self, filt):
+        if filt is None:
+            return None
+
+        if isinstance(filt, basestring):
+            return filt
+
+        #filter is not empty or a string so we assume it's a list
+        return ';'.join(filt)
+
     def _format_info(self, info):
         if not info:
             return '.'
-        return ';'.join("%s=%s" % (x, self._stringify(y)) for x, y in info.items())
+
+        formatted = []
+        for k, v in info.items():
+            #values of type flag do not have a value, their presence implies True.
+            if self.template.infos[k].type == 'Flag':
+                formatted.append(k)
+            else:
+                formatted.append("{}={}".format(k, self._stringify(v)))
+
+        return ';'.join(formatted)
+
+        #return ';'.join("%s=%s" % (x, self._stringify(y)) for x, y in info.items())
 
     def _format_sample(self, fmt, sample):
         if sample.data["GT"] is None:
