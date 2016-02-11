@@ -164,3 +164,5 @@ see :doc:`FILTERS` for full description.
 
 '''
 from .parser import VCFReader, Reader, VCFWriter, Writer
+import cyvcf.version
+__version__ = cyvcf.version.__version__
