@@ -163,6 +163,28 @@ class Test1kg(unittest.TestCase):
         for _ in reader:
             pass
 
+def read_header(filename):
+    """Convenience method to return all header lines from a file"""
+    
+    #looks like an open filehandle so don't open
+    if hasattr(filename, 'read'):
+        fh = filename
+    else:
+        fh = open(filename)
+
+    return [x for x in fh if x.startswith('#')]
+
+def read_skip_header(filename):
+    """Convenience method to return all lines that aren't header lines from a file"""
+
+    #looks like an open filehandle so don't open
+    if hasattr(filename, 'read'):
+        fh = filename
+    else:
+        fh = open(filename)
+
+    return [x for x in fh if not x.startswith('#')]
+
 
 class TestWriter(unittest.TestCase):
 
@@ -194,15 +216,7 @@ class TestWriter(unittest.TestCase):
         out = StringIO()
         writer = cyvcf.Writer(out, reader) #this will immediately call _write_header
 
-        header_lines = []
-        with open(filename) as f:
-            for line in f:
-                if line.startswith('#'):
-                    header_lines.append(line)
-                else:
-                    #no header lines left
-                    break
-
+        header_lines = read_header(filename) 
         out.seek(0)
         
         #check each header line matches
@@ -218,6 +232,26 @@ class TestWriter(unittest.TestCase):
 
         out.close()
 
+    def testHeaderAdd(self):
+        """Make sure we can add a header"""
+        filename = 'test/example-4.0.vcf'
+        reader = cyvcf.Reader(open(filename))
+        out = StringIO()
+
+        reader.add_header("BD_SCORE", ".", "Integer", "BreakDancer score for SV call")
+        writer = cyvcf.Writer(out, reader)
+
+        out.seek(0)
+        lines = read_header(out)
+        #should do this a better way than -8 but w/e
+        self.assertEquals(lines[-8], '##INFO=<ID=BD_SCORE,Number=.,Type=Integer,Description="BreakDancer score for SV call">\n')
+
+        #make sure adding a new INFO field doesn't die due to header key lookup error
+        record = next(reader)
+        record.INFO['TEST_FIELD'] = 'GARFIELD'
+        writer.write_record(record)
+        
+
 #we can't directly compare lines because the INFO is stored in an unordered dict
 #the order doesn't _really_ matter so for now I won't test this explictly, but we will
 #write out all the lines to make sure it doesn't die
@@ -232,12 +266,10 @@ class TestWriter(unittest.TestCase):
             writer.write_record(record)
 
         #get all the lines that aren't header lines
-        original_lines = []
-        with open(filename) as f:
-            original_lines = [x for x in f if not x.startswith('#')]
+        original_lines = read_skip_header(filename)
 
         out.seek(0)
-        new_lines = [x for x in out if not x.startswith('#')]
+        new_lines = read_skip_header(out)
 
 #        self.assertEquals(len(original_lines), len(new_lines))
 #        for i in range(len(new_lines)):

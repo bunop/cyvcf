@@ -1141,6 +1141,9 @@ cdef class Reader(object):
         self.reader = self._tabix.fetch(chrom, start, end)
         return self
 
+    def add_header(self, name, num, type, desc):
+        """Convenience method for adding a new header"""
+        self.infos[name] = Info(name, num, type, desc)
 
 class Writer(object):
     """ VCF Writer """
@@ -1204,7 +1207,8 @@ class Writer(object):
         formatted = []
         for k, v in info.items():
             #values of type flag do not have a value, their presence implies True.
-            if self.template.infos[k].type == 'Flag':
+            #make sure the key exists before we look up the type
+            if k in self.template.infos and self.template.infos[k].type == 'Flag':
                 formatted.append(k)
             else:
                 formatted.append("{}={}".format(k, self._stringify(v)))
