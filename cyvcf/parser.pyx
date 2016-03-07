@@ -1141,9 +1141,14 @@ cdef class Reader(object):
         self.reader = self._tabix.fetch(chrom, start, end)
         return self
 
-    def add_header(self, name, num, type, desc):
+    #we set the default for header_type to info for legacy reasons
+    def add_info_header(self, name, num, type, desc):
         """Convenience method for adding a new header"""
         self.infos[name] = Info(name, num, type, desc)
+
+    def add_filter_header(self, name, desc):
+        """Convenience method for adding a new header"""
+        self.filters[name] = Filter(name, desc)
 
 class Writer(object):
     """ VCF Writer """

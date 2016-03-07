@@ -238,13 +238,16 @@ class TestWriter(unittest.TestCase):
         reader = cyvcf.Reader(open(filename))
         out = StringIO()
 
-        reader.add_header("BD_SCORE", ".", "Integer", "BreakDancer score for SV call")
+        reader.add_info_header("BD_SCORE", ".", "Integer", "BreakDancer score for SV call")
+        reader.add_filter_header("DGV_COMMON", "Common DVG SVs")
         writer = cyvcf.Writer(out, reader)
 
         out.seek(0)
         lines = read_header(out)
+        
         #should do this a better way than -8 but w/e
-        self.assertEquals(lines[-8], '##INFO=<ID=BD_SCORE,Number=.,Type=Integer,Description="BreakDancer score for SV call">\n')
+        self.assertEquals(lines[-9], '##INFO=<ID=BD_SCORE,Number=.,Type=Integer,Description="BreakDancer score for SV call">\n')
+        self.assertEquals(lines[-2], '##FILTER=<ID=DGV_COMMON,Description="Common DVG SVs">\n')
 
         #make sure adding a new INFO field doesn't die due to header key lookup error
         record = next(reader)
