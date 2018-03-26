@@ -8,8 +8,12 @@ def walk_together(*readers):
     """
     nexts = [reader.next() for reader in readers]
 
+    print "Nexts = ", nexts
+
     while True:
         min_next = min([x for x in nexts if x is not None])
+
+        print "min_next = ", min_next
 
         # this line uses equality on Records, which checks the ALTs
         # not sure what to do with records that have overlapping but different
@@ -24,6 +28,8 @@ def walk_together(*readers):
                     nexts[i] = readers[i].next()
                 except StopIteration:
                     nexts[i] = None
+
+        print "Nexts = ", nexts
 
         if all([x is None for x in nexts]):
             break

@@ -19,7 +19,7 @@ except ImportError:
       def build_extensions(self):
           # First, sanity-check the 'extensions' list
           self.check_extensions_list(self.extensions)
-          
+
           for extension in self.extensions:
               target_ext = '.c'
 
@@ -33,7 +33,7 @@ except ImportError:
 
               extension.sources = patchedsrc
               self.build_extension(extension)
-  
+
 
 if 'setuptools.extension' in sys.modules:
     m = sys.modules['setuptools.extension']
@@ -58,6 +58,10 @@ setup(
         package_dir = {"cyvcf": "cyvcf"},
         author_email="arq5x@virginia.edu",
         install_requires = ["cython"],
+        extras_require={
+            'dev': ['check-manifest'],
+            'test': ['coverage', 'nose', 'pyvcf>=0.6.8'],
+        },
         classifiers=[
             'Development Status :: 4 - Beta',
             'Intended Audience :: Science/Research',

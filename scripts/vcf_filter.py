@@ -37,7 +37,8 @@ if __name__ == '__main__':
         filt = p.load()
         filters[filt.name] = filt
         filt.customize_parser(parser)
-        filter_help += '\n  %s:\t%s' % (filt.name, filt.description)
+        description = filt.__doc__.split("\n")[0]
+        filter_help += '\n  %s:\t%s' % (filt.name, description)
 
     parser.description += filter_help
 
@@ -51,7 +52,8 @@ if __name__ == '__main__':
     for name in args.filters:
         f = filters[name](args)
         chain.append(f)
-        inp.filters[f.filter_name()] = _Filter(f.filter_name(), f.description)
+        description = f.__doc__.split("\n")[0]
+        inp.filters[f.filter_name()] = _Filter(f.filter_name(), description)
 
     oup = vcf.Writer(args.output, inp)
 
@@ -68,5 +70,3 @@ if __name__ == '__main__':
 
         if (not args.no_filtered) or (record.FILTER == '.'):
             oup.write_record(record)
-
-

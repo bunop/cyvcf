@@ -177,7 +177,7 @@ class Test1kg(unittest.TestCase):
 
 def read_header(filename):
     """Convenience method to return all header lines from a file"""
-    
+
     #looks like an open filehandle so don't open
     if hasattr(filename, 'read'):
         fh = filename
@@ -228,9 +228,9 @@ class TestWriter(unittest.TestCase):
         out = StringIO()
         writer = cyvcf.Writer(out, reader) #this will immediately call _write_header
 
-        header_lines = read_header(filename) 
+        header_lines = read_header(filename)
         out.seek(0)
-        
+
         #check each header line matches
         for i, line in enumerate(out):
             if line.startswith('#'):
@@ -256,7 +256,7 @@ class TestWriter(unittest.TestCase):
 
         out.seek(0)
         lines = read_header(out)
-        
+
         #should do this a better way than -8 but w/e
         self.assertEquals(lines[-9], '##INFO=<ID=BD_SCORE,Number=.,Type=Integer,Description="BreakDancer score for SV call">\n')
         self.assertEquals(lines[-2], '##FILTER=<ID=DGV_COMMON,Description="Common DVG SVs">\n')
@@ -265,7 +265,7 @@ class TestWriter(unittest.TestCase):
         record = next(reader)
         record.INFO['TEST_FIELD'] = 'GARFIELD'
         writer.write_record(record)
-        
+
 
 #we can't directly compare lines because the INFO is stored in an unordered dict
 #the order doesn't _really_ matter so for now I won't test this explictly, but we will
@@ -811,15 +811,17 @@ class TestUtils(unittest.TestCase):
             assert len(x) == 3
             assert (x[0] == x[1]) and (x[1] == x[2])
             n+= 1
-        assert n == 5
+        assert n == 6
 
         # artificial case 2 from the left, 2 from the right, 2 together, 1 from the right, 1 from the left
 
-        expected = 'llrrttrl'
+        expected = 'llrrttrrll'
         reader1 = cyvcf.Reader(fh('walk_left.vcf'))
         reader2 = cyvcf.Reader(fh('example-4.0.vcf'))
 
         for ex, recs in zip(expected, utils.walk_together(reader1, reader2)):
+            print(ex),
+            print(recs)
 
             if ex == 'l':
                 assert recs[0] is not None
@@ -848,6 +850,29 @@ class TestGLInt(unittest.TestCase):
         self.assertEqual(v.samples[0].gt_phred_likelihoods, None)
 
 
+class TestCMP(unittest.TestCase):
+    def setUp(self):
+        self.reader1 = cyvcf.Reader(fh('walk_left.vcf'))
+        self.reader2 = cyvcf.Reader(fh('example-4.0.vcf'))
+
+    def testGreater(self):
+        # 19     14370
+        r1 = self.reader1.next()
+        # 20     14370
+        r2 = self.reader2.next()
+
+        self.assertEqual(r2>r1, True)
+
+    def testLesser(self):
+        # 19     14370
+        r1 = self.reader1.next()
+        # 20     14370
+        r2 = self.reader2.next()
+
+        self.assertEqual(r1<r2, True)
+
+
+
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVcfSpecs))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAD))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGatkOutput))
@@ -862,3 +887,4 @@ suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRecord))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCall))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRegression))
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGLInt))
+suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCMP))

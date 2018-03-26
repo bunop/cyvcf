@@ -505,6 +505,26 @@ cdef class Record(object):
                     self.REF == other.REF and
                     self.ALT == other.ALT)
 
+        else:
+            compare = cmp( (self.CHROM, self.POS), (other.CHROM, other.POS))
+            if op == 0:
+                if compare < 0:
+                    return True
+
+            elif op == 1:
+                if compare <= 0:
+                    return True
+
+            elif op == 4:
+                if compare > 0:
+                    return True
+
+            elif op == 5:
+                if compare >= 0:
+                    return True
+
+            return False
+
     def __iter__(self):
         return iter(self.samples)
 
@@ -555,8 +575,8 @@ cdef class Record(object):
                           self._format_qual() or '.', self._format_filter() or '.', self._format_info()])
 
 
-    def __cmp__(self, other):
-        return cmp( (self.CHROM, self.POS), (other.CHROM, other.POS))
+    # def __richcmp__(self, other, int op):
+    #    return cmp( (self.CHROM, self.POS), (other.CHROM, other.POS))
 
     def add_format(self, fmt):
         tmp = self.FORMAT + ':' + fmt
@@ -1106,7 +1126,7 @@ cdef class Reader(object):
 
         rec = Record(chrom, pos, id, ref, alt, qual, filt, info, fmt, self._sample_indexes)
 
-        # collect GENOTYPE information for the current VCF record 
+        # collect GENOTYPE information for the current VCF record
         if fmt is not None:
             self._parse_samples(rec, row[9:], fmt)
         return rec
