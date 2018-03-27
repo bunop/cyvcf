@@ -515,6 +515,10 @@ cdef class Record(object):
                 if compare <= 0:
                     return True
 
+            elif op == 3:
+                if compare != 0:
+                    return True
+
             elif op == 4:
                 if compare > 0:
                     return True
@@ -573,10 +577,6 @@ cdef class Record(object):
         else:
             return "\t".join([self.CHROM, str(self.POS), str(self.ID), str(self.REF), self._format_alt(),
                           self._format_qual() or '.', self._format_filter() or '.', self._format_info()])
-
-
-    # def __richcmp__(self, other, int op):
-    #    return cmp( (self.CHROM, self.POS), (other.CHROM, other.POS))
 
     def add_format(self, fmt):
         tmp = self.FORMAT + ':' + fmt

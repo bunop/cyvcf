@@ -862,6 +862,8 @@ class TestCMP(unittest.TestCase):
         r2 = self.reader2.next()
 
         self.assertEqual(r2>r1, True)
+        self.assertEqual(r1>=r1, True)
+        self.assertEqual(r1>r2, False)
 
     def testLesser(self):
         # 19     14370
@@ -870,7 +872,18 @@ class TestCMP(unittest.TestCase):
         r2 = self.reader2.next()
 
         self.assertEqual(r1<r2, True)
+        self.assertEqual(r1<=r1, True)
+        self.assertEqual(r2<r1, False)
 
+    def testEqual(self):
+        # 19     14370
+        r1 = self.reader1.next()
+        # 20     14370
+        r2 = self.reader2.next()
+
+        self.assertEqual(r1==r1, True)
+        self.assertEqual(r1!=r2, True)
+        self.assertEqual(r1==r2, False)
 
 
 suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestVcfSpecs))
